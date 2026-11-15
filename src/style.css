@@ -1,20 +1,14 @@
-.cpu {
-    color: #89b4fa;
-    background-color: #313244;
-    font-family: monospace;
-    font-size: 14px;
-    font-weight: bold;
-    padding: 4px 12px;
-    margin: 2px 6px;
-    border-radius: 8px;
-}
 window {
-    background-color: #1e1e2e;
-    color: #cdd6f4;
+    background-color: #19120d;
+    border-radius: 20px;
 }
 
 label {
-    font-family: monospace;
-    font-size: 14px;
-    font-weight: bold;
+    color: #f0dfd6;
+}
+
+.cpu,
+.clock
+{
+    color: #ffb785;
 }
