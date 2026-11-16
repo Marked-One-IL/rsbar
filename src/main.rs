@@ -1,12 +1,14 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
+mod workspaces;
 mod info;
 mod cpu;
+mod ram;
 mod clock;
 fn main() -> gtk::glib::ExitCode {
     const HEIGHT: i32 = 32;
-    const WIDTH: i32 = 800;
+    const WIDTH: i32 = 1200;
     const MARGINLEFT: i32 = 8;
     const MARGINRIGHT: i32 = 8;
     const MARGINCENTER: i32 = 8;
@@ -67,8 +69,10 @@ fn main() -> gtk::glib::ExitCode {
         bar.set_end_widget(Some(&right));
 
         bar.set_height_request(HEIGHT);
-        cpu::cpu(&left);
-        clock::time(&center);
+        cpu::cpu(&center);
+        ram::ram(&center);
+        clock::time(&right);
+        workspaces::workspaces(&left);
 
 
         window.set_child(Some(&bar));
