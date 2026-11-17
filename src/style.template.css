@@ -1,6 +1,6 @@
 window {
     background-color: {{colors.surface.default.hex}};
-    border-radius: 20px;
+    border-radius: 0;
 }
 
 label {
@@ -19,4 +19,10 @@ label {
     border: none;
     box-shadow: none;
     color: {{colors.primary.default.hex}};
+}
+
+.workspace.active {
+    background: {{colors.primary.default.hex}};
+    color: {{colors.surface.default.hex}};
+    border-radius: 8px;
 }

@@ -1,22 +1,28 @@
 window {
-    background-color: #19120d;
-    border-radius: 20px;
+    background-color: #0f1416;
+    border-radius: 0;
 }
 
 label {
-    color: #f0dfd6;
+    color: #dee3e5;
 }
 
 .cpu,
 .clock,
 .ram,
 {
-    color: #ffb785;
+    color: #85d2e7;
 }
 .workspace {
     background: transparent;
     padding: 2px 8px;
     border: none;
     box-shadow: none;
-    color: #ffb785;
+    color: #85d2e7;
+}
+
+.workspace.active {
+    background: #85d2e7;
+    color: #0f1416;
+    border-radius: 8px;
 }

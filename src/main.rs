@@ -8,12 +8,12 @@ mod ram;
 mod clock;
 fn main() -> gtk::glib::ExitCode {
     const HEIGHT: i32 = 32;
-    const WIDTH: i32 = 1200;
+    const WIDTH: i32 = 1920;
     const MARGINLEFT: i32 = 8;
     const MARGINRIGHT: i32 = 8;
     const MARGINCENTER: i32 = 8;
     const MARGINTOP: i32 = 8;
-    const MARGINBOTTOM: i32 = 8;
+    const MARGINBOTTOM: i32 = 0;
     let app = gtk::Application::builder()
         .application_id("rs.bar.me")
         .build();
