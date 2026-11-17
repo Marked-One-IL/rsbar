@@ -1,7 +1,9 @@
 use gtk::prelude::*;
 use gtk4 as gtk;
-use std::process::Command;
-use std::sync::mpsc;
+use std::io::BufReader;
+use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 pub fn workspaces(bar: &gtk::Box) {
@@ -23,44 +25,85 @@ pub fn workspaces(bar: &gtk::Box) {
         buttons.push(button.downgrade());
     }
 
-    // Keep compositor queries off the GTK thread. A bounded channel prevents
-    // updates from accumulating if the UI is busy.
-    let (sender, receiver) = mpsc::sync_channel(1);
+    // Keep only the latest event, so a busy UI cannot accumulate stale states.
+    let latest = Arc::new(Mutex::new(None));
+    let child = Arc::new(Mutex::new(None::<std::process::Child>));
+    let stopped = Arc::new(AtomicBool::new(false));
+    let worker_latest = Arc::clone(&latest);
+    let worker_child = Arc::clone(&child);
+    let worker_stopped = Arc::clone(&stopped);
     std::thread::spawn(move || {
-        loop {
-            let active = Command::new("mmsg")
-                .args(["get", "all-monitors"])
-                .output()
-                .ok()
-                .filter(|output| output.status.success())
-                .and_then(|output| serde_json::from_slice::<serde_json::Value>(&output.stdout).ok())
-                .and_then(|state| {
-                    let monitor = state.get("monitors")?.as_array()?.iter().find(|monitor| {
-                        monitor.get("active").and_then(|v| v.as_bool()) == Some(true)
-                    })?;
-                    Some(
-                        monitor
-                            .get("active_tags")?
-                            .as_array()?
-                            .iter()
-                            .filter_map(|tag| tag.as_u64())
-                            .collect::<Vec<_>>(),
-                    )
-                });
-
-            match sender.try_send(active) {
-                Err(mpsc::TrySendError::Disconnected(_)) => break,
-                _ => {}
+        while !worker_stopped.load(Ordering::Relaxed) {
+            // Hold the lock through spawn so shutdown cannot miss a new child.
+            let stdout = {
+                let mut slot = worker_child.lock().unwrap();
+                if worker_stopped.load(Ordering::Relaxed) {
+                    break;
+                }
+                match Command::new("mmsg")
+                    .args(["watch", "all-monitors"])
+                    .stdout(Stdio::piped())
+                    .spawn()
+                {
+                    Ok(mut process) => {
+                        let stdout = process.stdout.take();
+                        *slot = Some(process);
+                        stdout
+                    }
+                    Err(error) => {
+                        eprintln!("Could not watch workspaces: {error}");
+                        None
+                    }
+                }
+            };
+            if let Some(stdout) = stdout {
+                // Parse consecutive JSON values, including pretty-printed objects.
+                let events = serde_json::Deserializer::from_reader(BufReader::new(stdout))
+                    .into_iter::<serde_json::Value>();
+                for event in events {
+                    if worker_stopped.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    let state = match event {
+                        Ok(state) => state,
+                        Err(error) => {
+                            eprintln!("Could not read workspace event: {error}");
+                            break;
+                        }
+                    };
+                    let active = state.get("monitors")
+                        .and_then(|monitors| monitors.as_array())
+                        .and_then(|monitors| monitors.iter().find(|monitor| {
+                            monitor.get("active").and_then(|v| v.as_bool()) == Some(true)
+                        }))
+                        .and_then(|monitor| monitor.get("active_tags"))
+                        .and_then(|tags| tags.as_array())
+                        .map(|tags| tags.iter().filter_map(|tag| tag.as_u64()).collect::<Vec<_>>());
+                    if let Some(active) = active {
+                        *worker_latest.lock().unwrap() = Some(active);
+                    }
+                }
             }
-            std::thread::sleep(Duration::from_millis(250));
+            if let Some(mut process) = worker_child.lock().unwrap().take() {
+                let _ = process.kill();
+                let _ = process.wait();
+            }
+            if !worker_stopped.load(Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_secs(1));
+            }
         }
     });
 
-    gtk::glib::timeout_add_local(Duration::from_millis(100), move || {
+    gtk::glib::timeout_add_local(Duration::from_millis(16), move || {
         if buttons.iter().all(|button| button.upgrade().is_none()) {
+            stopped.store(true, Ordering::Relaxed);
+            if let Some(process) = child.lock().unwrap().as_mut() {
+                let _ = process.kill();
+            }
             return gtk::glib::ControlFlow::Break;
         }
-        if let Ok(Some(active)) = receiver.try_recv() {
+        let active = latest.lock().unwrap().take();
+        if let Some(active) = active {
             for (index, button) in buttons.iter().enumerate() {
                 if let Some(button) = button.upgrade() {
                     if active.contains(&(index as u64 + 1)) {

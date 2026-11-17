@@ -7,13 +7,13 @@ mod cpu;
 mod ram;
 mod clock;
 fn main() -> gtk::glib::ExitCode {
-    const HEIGHT: i32 = 32;
+    const HEIGHT: i32 = 28;
     const WIDTH: i32 = 1920;
     const MARGINLEFT: i32 = 8;
     const MARGINRIGHT: i32 = 8;
     const MARGINCENTER: i32 = 8;
-    const MARGINTOP: i32 = 8;
-    const MARGINBOTTOM: i32 = 0;
+    const MARGINTOP: i32 = 0;
+    const MARGINBOTTOM: i32 = 8;
     let app = gtk::Application::builder()
         .application_id("rs.bar.me")
         .build();
@@ -53,7 +53,7 @@ fn main() -> gtk::glib::ExitCode {
             window.set_margin(Edge::Bottom, MARGINBOTTOM);
         }
         window.set_layer(Layer::Top);
-        window.set_anchor(Edge::Bottom, true);
+        window.set_anchor(Edge::Top, true);
         window.set_anchor(Edge::Left, false);
         window.set_anchor(Edge::Right, false);
         window.set_default_size(WIDTH, HEIGHT);

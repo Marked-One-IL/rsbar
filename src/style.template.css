@@ -24,5 +24,8 @@ label {
 .workspace.active {
     background: {{colors.primary.default.hex}};
     color: {{colors.surface.default.hex}};
-    border-radius: 8px;
+    border-radius: 0;
+}
+.workspace.active label {
+    color: black;
 }
